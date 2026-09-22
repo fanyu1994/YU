@@ -114,13 +114,28 @@ class _LoginPageState extends State<LoginPage>
             left: 0,
             right: 0,
             child: Text(
-              '欢迎回来',
+              '你好,欢迎登陆',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
                 letterSpacing: 4,
+              ),
+            ),
+          ),
+          const Positioned(
+            top: 150,
+            left: 0,
+            right: 0,
+            child: Text(
+              '古田溪智慧抽蓄',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: Color.fromARGB(255, 130, 164, 236),
+                letterSpacing: 2,
               ),
             ),
           ),
@@ -158,11 +173,11 @@ class _LoginPageState extends State<LoginPage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                '登录',
+                '密码登录',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color.fromARGB(255, 89, 143, 231),
                 ),
               ),
               const SizedBox(height: 28),
