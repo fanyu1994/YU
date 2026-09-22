@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
-
 import '../routes.dart';
 import '../../utils/token_storage.dart';
+import './y_api.dart';
 
 class YPage extends StatefulWidget {
   const YPage({super.key});
@@ -72,42 +72,63 @@ class _YPageState extends State<YPage> {
 }
 
 class _buildYUOneList extends StatefulWidget {
-  const _buildYUOneList({super.key});
+  const _buildYUOneList();
 
   @override
   State<_buildYUOneList> createState() => _buildYUOneListState();
 }
 
-
-
 class _buildYUOneListState extends State<_buildYUOneList> {
-
-  final List<String> _items = [];
+  late List<Map<String, dynamic>> _items = [];
 
   @override
-  Future<void> initState() async {
+  void initState() {
     super.initState();
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    _items.addAll(List.generate(10, (index) => 'YU One $index'));
+    _loadApplications();
+  }
+
+  Future<void> _loadApplications() async {
+    try {
+      final items = await YApi.getApplications();
+      if (!mounted) return;
+      setState(() {
+        _items = items.isNotEmpty ? items : [];
+      });
+    } catch (e) {
+      debugPrint('加载项目列表失败: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: [
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-        Text('YU One ! ! !'),
-      ],
+      children: _items.map((group) {
+        final groupName = group['groupName'] ?? '';
+        final apps = group['applicationList'] as List? ?? [];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                groupName as String,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ...apps.map((app) {
+              final map = Map<String, dynamic>.from(app as Map);
+              return ListTile(
+                leading: const Icon(Icons.apps, color: Color(0xFFB983FF)),
+                title: Text(map['appName']?.toString() ?? ''),
+                subtitle: Text(map['linkUrl']?.toString() ?? ''),
+              );
+            }),
+          ],
+        );
+      }).toList(),
     );
   }
 }

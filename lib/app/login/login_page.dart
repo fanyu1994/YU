@@ -3,7 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:yu/app/login/login_api.dart';
 import 'package:yu/components/overlay/top_toast.dart';
-import 'package:yu/network/api_client.dart';
+import 'package:yu/network/api_exception.dart';
+import 'package:yu/utils/index.dart';
 
 import '../routes.dart';
 import '../../utils/token_storage.dart';
@@ -59,8 +60,9 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Future<void> _login() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text;
+    final username = 'lecs';
+    final password =
+        '04fbe754e5e4b4e7f74e1a5383d1b9f335649bd16c1332d44cec1daa9b4e78b6daa2891752ec89198a04c03bf9cfac62ca03a452877aa4bd0e9d1931863e257a6e106f5db7a4e81bc51550e38231598bc5075d689492251eed597c25c55ad18c09a769fc6c9255e049073d'; // _passwordController.text;
     if (username.isEmpty || password.isEmpty) {
       // 显示 toast 提示
       TopToast.show(context, '请输入用户名和密码');
@@ -70,17 +72,31 @@ class _LoginPageState extends State<LoginPage>
     setState(() => _loggingIn = true);
 
     dynamic response;
-    // TODO: 替换为真实登录接口
     try {
+      // TODO: password 需要加密后传入，与 H5 端保持一致
       response = await LoginApi.login(username, password);
-      TopToast.show(context, '登录成功');
+    } on ApiException catch (e) {
+      TopToast.show(context, e.message);
+      setState(() => _loggingIn = false);
+      return;
     } catch (e) {
       TopToast.show(context, '登录失败');
+      setState(() => _loggingIn = false);
       return;
     }
+    // {code: 10001, success: false, data: {}, msg: 登录密码解密失败}
+    debugPrint('登录 Response: $response');
+    if (!response['success']) {
+      TopToast.show(context, response['msg']);
+      setState(() => _loggingIn = false);
+      return;
+    }
+    TopToast.show(context, '登录成功');
+    setState(() => _loggingIn = false);
     await TokenStorage.clearToken();
-    final String token = response['access-token'];
+    final String token = response['data']['access-token'];
     await TokenStorage.saveToken(token);
+    await Utils().debugPrintAllStorage();
 
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed(AppRoutes.y);

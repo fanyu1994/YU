@@ -2,7 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 本地 token 存储
 class TokenStorage {
-  static const String _key = 'auth_token';
+  static const String _key = 'access-token';
 
   /// 读取本地 token，未登录时返回 null
   static Future<String?> getToken() async {

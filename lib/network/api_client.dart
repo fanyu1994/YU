@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:yu/config/env.dart';
 
+import '../app/routes.dart';
 import '../utils/token_storage.dart';
 import 'api_exception.dart';
 import 'api_response.dart';
@@ -33,10 +35,7 @@ class ApiClient {
     );
 
     _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: _onRequest,
-        onError: _onError,
-      ),
+      InterceptorsWrapper(onRequest: _onRequest, onError: _onError),
     );
 
     if (kDebugMode) {
@@ -47,6 +46,11 @@ class ApiClient {
   }
 
   static final ApiClient instance = ApiClient._internal();
+
+  /// 全局 Navigator Key，用于 401 时跳转登录页
+  /// 在 MaterialApp 中通过 navigatorKey 关联
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   /// 接口根地址，接入真实后端时替换这里
   static const String baseUrl = Env.baseUrl;
@@ -94,6 +98,32 @@ class ApiClient {
         options: options,
       ),
     );
+  }
+
+  /// POST 请求，返回原始响应数据（不做 {code, message, data} 解包）
+  ///
+  /// 适用于 OAuth2 等非标准响应格式的接口
+  Future<dynamic> postRaw(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? query,
+    CancelToken? cancelToken,
+    Options? options,
+  }) async {
+    try {
+      final response = await _dio.post<dynamic>(
+        path,
+        data: data,
+        queryParameters: query,
+        cancelToken: cancelToken,
+        options: options,
+      );
+      return response.data;
+    } on DioException catch (e) {
+      final error = e.error;
+      if (error is ApiException) throw error;
+      throw _mapDioException(e);
+    }
   }
 
   /// PUT 请求，返回解包后的 data
@@ -182,7 +212,7 @@ class ApiClient {
     try {
       final token = await TokenStorage.getToken();
       if (token != null && token.isNotEmpty) {
-        options.headers['Authorization'] = 'Bearer $token';
+        options.headers['Authorization'] = '$token';
       }
 
       // jxd业务
@@ -237,7 +267,8 @@ class ApiClient {
     switch (statusCode) {
       case 400:
         return '请求参数有误';
-      case 401:
+      case 4100:
+        _navigateToLogin(); // 401 时清除 token 并跳转登录页
         return '登录已过期，请重新登录';
       case 403:
         return '没有访问权限';
@@ -257,6 +288,18 @@ class ApiClient {
         return '网关超时';
       default:
         return statusCode == null ? '请求失败' : '请求失败（$statusCode）';
+    }
+  }
+
+  /// 401 时清除 token 并跳转到登录页
+  void _navigateToLogin() {
+    debugPrint('401 登录已过期，跳转登录页');
+    TokenStorage.clearToken();
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => route.isFirst);
     }
   }
 }

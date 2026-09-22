@@ -18,7 +18,7 @@ class ApiResponse<T> {
   });
 
   /// 业务成功的判定码，按后端约定修改
-  static const int successCode = 0;
+  static const int successCode = 10000;
 
   bool get isSuccess => code == successCode;
 
