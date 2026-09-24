@@ -1,6 +1,5 @@
 import "package:flutter/material.dart";
 import '../routes.dart';
-import '../../config/env.dart';
 import '../../utils/token_storage.dart';
 import './y_api.dart';
 import 'h5_page.dart';
@@ -57,7 +56,7 @@ class _YPageState extends State<YPage> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16.0),
                   border: Border.all(
-                    color: const Color.fromARGB(255, 199, 5, 5),
+                    color: const Color.fromARGB(255, 255, 255, 255),
                     width: 1.0,
                   ),
                 ),
@@ -121,6 +120,10 @@ class _BuildYUOneListState extends State<_BuildYUOneList> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      // 关键：让每个分组都撑满整行宽度，否则只有 1~2 个子应用时
+      // （Wrap 宽度小于可用宽度）整组会被 Column 默认的 center 居中，
+      // 看起来就不靠左了
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: _items.map((group) {
         final groupName = group['groupName'] ?? '';
         final apps = group['applicationList'] as List? ?? [];
@@ -137,18 +140,85 @@ class _BuildYUOneListState extends State<_BuildYUOneList> {
                 ),
               ),
             ),
-            ...apps.map((app) {
-              final map = Map<String, dynamic>.from(app as Map);
-              return ListTile(
-                leading: const Icon(Icons.apps, color: Color(0xFFB983FF)),
-                title: Text(map['appName']?.toString() ?? ''),
-                subtitle: Text(map['linkUrl']?.toString() ?? ''),
-                onTap: () => openApplication(map),
-              );
-            }),
+            // 应用横向排列，宽度不够时自动换行（左右内边距与标题保持 16 对齐）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: Wrap(
+                alignment: WrapAlignment.start,
+                spacing: 4,
+                runSpacing: 12,
+                children: apps.map((app) {
+                  final map = Map<String, dynamic>.from(app as Map);
+                  return _AppTile(
+                    name: map['appName']?.toString() ?? '',
+                    linkUrl: map['linkUrl']?.toString() ?? '',
+                    onTap: () => openApplication(map),
+                  );
+                }).toList(),
+              ),
+            ),
           ],
         );
       }).toList(),
+    );
+  }
+}
+
+/// 单个应用入口：图标 + 名称的网格单元
+class _AppTile extends StatelessWidget {
+  const _AppTile({
+    required this.name,
+    required this.linkUrl,
+    required this.onTap,
+  });
+
+  final String name;
+  final String linkUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: linkUrl.isEmpty ? name : '$name\n$linkUrl',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width / 4 - 24,
+          child: Padding(
+            // 水平方向不留内边距，让图标左边缘与标题左边缘对齐到同一条 16 的竖线
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // 保持最小高度，避免换行
+              // 图标与名称都从左侧开始对齐
+              crossAxisAlignment: CrossAxisAlignment.center, // 图标与名称都从左侧开始对齐
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFB983FF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.apps,
+                    color: Color(0xFFB983FF),
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  name.isEmpty ? '未命名' : name,
+                  maxLines: 2,
+                  textAlign: TextAlign.left,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, height: 1.2),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
