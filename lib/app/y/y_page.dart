@@ -1,7 +1,9 @@
 import "package:flutter/material.dart";
 import '../routes.dart';
+import '../../config/env.dart';
 import '../../utils/token_storage.dart';
 import './y_api.dart';
+import 'h5_page.dart';
 
 class YPage extends StatefulWidget {
   const YPage({super.key});
@@ -60,7 +62,7 @@ class _YPageState extends State<YPage> {
                   ),
                 ),
                 child: SingleChildScrollView(
-                  child: _buildYUOneList(), // 可滚动的内容
+                  child: const _BuildYUOneList(), // 可滚动的内容
                 ),
               ),
             ),
@@ -71,14 +73,14 @@ class _YPageState extends State<YPage> {
   }
 }
 
-class _buildYUOneList extends StatefulWidget {
-  const _buildYUOneList();
+class _BuildYUOneList extends StatefulWidget {
+  const _BuildYUOneList();
 
   @override
-  State<_buildYUOneList> createState() => _buildYUOneListState();
+  State<_BuildYUOneList> createState() => _BuildYUOneListState();
 }
 
-class _buildYUOneListState extends State<_buildYUOneList> {
+class _BuildYUOneListState extends State<_BuildYUOneList> {
   late List<Map<String, dynamic>> _items = [];
 
   @override
@@ -96,6 +98,23 @@ class _buildYUOneListState extends State<_buildYUOneList> {
       });
     } catch (e) {
       debugPrint('加载项目列表失败: $e');
+    }
+  }
+
+  /// 打开应用（resourceType "3" = H5 应用）
+  void openApplication(Map<String, dynamic> app) {
+    final resourceType = app['resourceType']?.toString() ?? '';
+    final linkUrl = app['linkUrl']?.toString() ?? '';
+    if (linkUrl.isEmpty) return;
+
+    if (resourceType == '3') {
+      // H5 应用：拼接完整 URL 后用 WebView 打开
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => H5Page(url: linkUrl)),
+      );
+    } else {
+      debugPrint('未知应用类型: $resourceType, linkUrl: $linkUrl');
     }
   }
 
@@ -124,6 +143,7 @@ class _buildYUOneListState extends State<_buildYUOneList> {
                 leading: const Icon(Icons.apps, color: Color(0xFFB983FF)),
                 title: Text(map['appName']?.toString() ?? ''),
                 subtitle: Text(map['linkUrl']?.toString() ?? ''),
+                onTap: () => openApplication(map),
               );
             }),
           ],

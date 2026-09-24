@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:yu/app/login/login_api.dart';
 import 'package:yu/components/overlay/top_toast.dart';
 import 'package:yu/network/api_exception.dart';
+import 'package:yu/utils/account_storage.dart';
 import 'package:yu/utils/index.dart';
 
 import '../routes.dart';
@@ -25,8 +26,11 @@ class _LoginPageState extends State<LoginPage>
 
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _usernameFocus = FocusNode();
   bool _obscurePassword = true;
   bool _loggingIn = false;
+  List<Map<String, String>> _recentAccounts = [];
+  bool _showAccountList = false;
 
   @override
   void initState() {
@@ -49,6 +53,26 @@ class _LoginPageState extends State<LoginPage>
     ).animate(curveSlide); // 滑入动画
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(curveFade); // 淡入动画
     _slideController.forward();
+    _loadRecentAccounts();
+    _usernameFocus.addListener(() {
+      if (_usernameFocus.hasFocus && _recentAccounts.isNotEmpty) {
+        setState(() => _showAccountList = true);
+      } else {
+        setState(() => _showAccountList = false);
+      }
+    });
+  }
+
+  Future<void> _loadRecentAccounts() async {
+    final accounts = await AccountStorage.getAccounts();
+    if (mounted) setState(() => _recentAccounts = accounts);
+  }
+
+  void _selectAccount(Map<String, String> account) {
+    _usernameController.text = account['username'] ?? '';
+    _passwordController.text = account['password'] ?? '';
+    setState(() => _showAccountList = false);
+    _usernameFocus.unfocus();
   }
 
   @override
@@ -56,6 +80,7 @@ class _LoginPageState extends State<LoginPage>
     _slideController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _usernameFocus.dispose();
     super.dispose();
   }
 
@@ -93,6 +118,7 @@ class _LoginPageState extends State<LoginPage>
     }
     TopToast.show(context, '登录成功');
     setState(() => _loggingIn = false);
+    await AccountStorage.saveAccount(username, password);
     await TokenStorage.clearToken();
     final String token = response['data']['access-token'];
     await TokenStorage.saveToken(token);
@@ -182,6 +208,8 @@ class _LoginPageState extends State<LoginPage>
               ),
               const SizedBox(height: 28),
               _buildUsernameField(),
+              if (_showAccountList && _recentAccounts.isNotEmpty)
+                _buildAccountDropdown(),
               const SizedBox(height: 18),
               _buildPasswordField(),
               const SizedBox(height: 14),
@@ -233,6 +261,7 @@ class _LoginPageState extends State<LoginPage>
   Widget _buildUsernameField() {
     return TextField(
       controller: _usernameController,
+      focusNode: _usernameFocus,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: '用户名',
@@ -245,6 +274,56 @@ class _LoginPageState extends State<LoginPage>
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
+      ),
+    );
+  }
+
+  /// 最近登录账号下拉列表
+  Widget _buildAccountDropdown() {
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      constraints: const BoxConstraints(maxHeight: 200),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2030),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: _recentAccounts.length,
+        separatorBuilder: (_, __) =>
+            Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+        itemBuilder: (context, index) {
+          final account = _recentAccounts[index];
+          final username = account['username'] ?? '';
+          return ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            leading: const Icon(Icons.person, color: Colors.white54, size: 20),
+            title: Text(
+              username,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            trailing: index == 0
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFB983FF).withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      '最近',
+                      style: TextStyle(color: Color(0xFFB983FF), fontSize: 10),
+                    ),
+                  )
+                : null,
+            onTap: () => _selectAccount(account),
+          );
+        },
       ),
     );
   }
